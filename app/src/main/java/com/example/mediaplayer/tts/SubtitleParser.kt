@@ -27,10 +27,22 @@ object SubtitleParser {
         for (b in blocks) {
             val lines = b.trim().lines()
             if (lines.size < 2) continue
-            val timeLine = lines.firstOrNull { it.contains("-->") } ?: continue
-            val (s, e) = parseTimes(timeLine) ?: continue
-            val body = lines.dropWhile { !it.contains("-->") }
-                .drop(1).joinToString(" ").trim()
+
+            // Find the timeline line without using a lambda with `continue`.
+            var timeIdx = -1
+            for (i in lines.indices) {
+                if (lines[i].contains("-->")) { timeIdx = i; break }
+            }
+            if (timeIdx < 0) continue
+
+            val (s, e) = parseTimes(lines[timeIdx]) ?: continue
+
+            val bodyBuilder = StringBuilder()
+            for (i in timeIdx + 1 until lines.size) {
+                if (bodyBuilder.isNotEmpty()) bodyBuilder.append(' ')
+                bodyBuilder.append(lines[i])
+            }
+            val body = bodyBuilder.toString().trim()
             if (body.isNotEmpty()) cues += SubtitleCue(s, e, body)
         }
         return cues
@@ -43,11 +55,14 @@ object SubtitleParser {
         while (i < lines.size) {
             val line = lines[i]
             if (line.contains("-->")) {
-                val (s, e) = parseTimes(line) ?: run { i++; continue }
+                val times = parseTimes(line)
+                if (times == null) { i++; continue }
+                val (s, e) = times
                 val sb = StringBuilder()
                 i++
                 while (i < lines.size && lines[i].isNotBlank() && !lines[i].contains("-->")) {
-                    sb.append(lines[i]).append(" ")
+                    if (sb.isNotEmpty()) sb.append(' ')
+                    sb.append(lines[i])
                     i++
                 }
                 val body = sb.toString().trim()
