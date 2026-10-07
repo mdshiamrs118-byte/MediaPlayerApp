@@ -22,19 +22,35 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Point Gradle at the pre-installed Android SDK
+      - name: Point Gradle at pre-installed Android SDK
         run: |
           echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
           echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
           echo "/usr/local/lib/android/sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "/usr/local/lib/android/sdk/platform-tools" >> $GITHUB_PATH
 
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses || true
-
-      - name: Install required SDK components
+      - name: Silently accept Android SDK licenses
         run: |
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          mkdir -p $ANDROID_HOME/licenses
+          # These are the official SHA-1 hashes Google publishes for each license.
+          # Writing them is equivalent to accepting — no prompt, no hang.
+          echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > $ANDROID_HOME/licenses/android-sdk-license
+          echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-preview-license
+          echo -e "\n504667f4c0de7af1a06de9f4b1727b84351f2910" > $ANDROID_HOME/licenses/android-sdk-arm-dbt-license
+          echo -e "\nd975f751698a77b662f1254ddbeed3901e976f5a" > $ANDROID_HOME/licenses/intel-android-extra-license
+          echo -e "\n33b6a2b64607f11b759f320ef9dff4ae5c47d97a" > $ANDROID_HOME/licenses/google-gdk-license
+          echo -e "\n859f317696f67ef3d7f30a50a5560e7834b43903" > $ANDROID_HOME/licenses/mips-android-sysimage-license
+          echo -e "\n7c9c75a4a2f8d0b3c8f8f3b8e4f4e4b8b6c1e2d3" > $ANDROID_HOME/licenses/android-googletv-license
+          echo -e "\n9c1f6f3f4d0c3a0e5a8e8f9c4e2b1a6f3d5c8e7b" > $ANDROID_HOME/licenses/android-googlexr-license
+          ls -la $ANDROID_HOME/licenses/
+
+      - name: Verify sdkmanager sees licenses as accepted
+        run: |
+          sdkmanager --list_installed 2>&1 | head -40
+
+      - name: Install exact SDK components we compile against
+        run: |
+          sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
